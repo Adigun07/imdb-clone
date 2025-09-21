@@ -1,0 +1,69 @@
+@import "tailwindcss";
+
+@theme {
+  --color-gray: hsl(0, 0%, 7%);
+  --color-gray-secondary: hsl(0, 0%, 12%);
+  --color-gray-hover: hsl(0, 0%, 15%);
+  --color-gray-medium: hsl(0, 0%, 30%);
+  --color-gray-light: hsl(0, 0%, 56%);
+  --color-yellow: hsl(47, 92%, 53%);
+  --color-blue: hsl(214, 83%, 64%);
+}
+
+@layer base {
+  body {
+    background-color: black;
+    color: white;
+    font-family: Roboto, Helvetica, Arial, sans-serif;
+    color-scheme: dark;
+  }
+  button {
+    cursor: pointer;
+  }
+}
+
+@layer utilities {
+  .small-menu {
+    @apply fixed w-full max-w-70 bottom-0 h-dvh hidden overflow-y-auto py-3 z-10 bg-gray-secondary;
+    transition:
+      left 250ms ease-in-out,
+      display 250ms ease-in-out;
+    transition-behavior: allow-discrete;
+    left: -100%;
+    height: 100dvh;
+
+    &.open {
+      @apply left-0 block;
+
+      @starting-style {
+        left: -100%;
+      }
+    }
+  }
+
+  .large-menu {
+    @apply fixed w-full h-full hidden overflow-y-auto bg-gray-secondary z-10;
+    transition:
+      top 250ms ease-in-out,
+      display 250ms ease-in-out;
+    transition-behavior: allow-discrete;
+    top: -100%;
+
+    &.open {
+      @apply top-0 block;
+      @starting-style {
+        top: -100%;
+      }
+    }
+  }
+  #search-input {
+    anchor-name: --search-input;
+  }
+
+  .search-submit {
+    position: absolute;
+    position-anchor: --search-input;
+    right: calc(anchor(right) + 4px);
+    align-self: anchor-center;
+  }
+}
