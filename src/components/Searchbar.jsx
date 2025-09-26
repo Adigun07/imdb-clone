@@ -1,51 +1,213 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, Suspense } from "react";
+import { useSearchbarContext } from "../contexts/SearchbarContext";
+import {
+  search,
+  getMediaCredits,
+  mediaTypes,
+} from "../services/tmbdServices.js";
+import { useDebounce, useQuery, useImage } from "../services/customHooks.js";
+import Loading from "./Loading.jsx";
 import TriangleIcon from "../assets/triangle.svg?react";
 import SearchIcon from "../assets/search.svg?react";
-import MovieIcon from "../assets/movies.svg?react";
-import TvIcon from "../assets/tv.svg?react";
-import CelebsIcon from "../assets/celebs.svg?react";
-import BuildingsIcon from "../assets/buildings.svg?react";
-import TagIcon from "../assets/tag.svg?react";
 import CloseIcon from "../assets/close.svg?react";
 
-const SmallSearchSelect = ({ index, setIndex, options }) => {
+const MovieElement = ({ movieObj }) => {
+  const castArray = useQuery(
+    () => getMediaCredits("movie", movieObj.id),
+    `getMediaCredits-movie-${movieObj.id}`,
+  )?.cast;
+
+  const actors =
+    castArray !== undefined
+      ? castArray
+          .slice(0, 2)
+          .map((a) => a.name)
+          .join(", ")
+      : "";
+
+  const releaseYear = movieObj.release_date
+    ? new Date(movieObj.release_date).getFullYear()
+    : "";
+
+  return (
+    <div className="flex gap-4 p-2 items-center border-b-1 border-white/25">
+      <img src={useImage(movieObj.poster_path)} className="w-12 rounded-lg" />
+      <div>
+        <h2>{movieObj.title}</h2>
+        <div>{releaseYear}</div>
+        <div>{`${actors}`}</div>
+      </div>
+    </div>
+  );
+};
+
+const TvElement = ({ tvObj }) => {
+  const castArray = useQuery(
+    () => getMediaCredits("tv", tvObj.id),
+    `getMediaCredits-tv-${tvObj.id}`,
+  )?.cast;
+
+  const actors =
+    castArray !== undefined
+      ? castArray
+          .slice(0, 2)
+          .map((a) => a.name)
+          .join(", ")
+      : "";
+
+  const releaseYear = tvObj.first_air_date
+    ? new Date(tvObj.first_air_date).getFullYear()
+    : "";
+
+  return (
+    <div className="flex gap-4 p-2 items-center border-b-1 border-white/25">
+      <img src={useImage(tvObj.poster_path)} className="w-12 rounded-lg" />
+      <div>
+        <h2>{tvObj.name}</h2>
+        <div>{releaseYear}</div>
+        <div>{`${actors}`}</div>
+      </div>
+    </div>
+  );
+};
+
+const PersonElement = ({ personObj }) => {
+  return (
+    <div className="flex gap-4 p-2 items-center border-b-1 border-white/25">
+      <img src={useImage(personObj.profile_path)} className="w-12 rounded-lg" />
+      <div>
+        <h2>{personObj.name}</h2>
+        <div>{personObj.known_for_department}</div>
+        <div>
+          {personObj.known_for[0]?.title ?? personObj.known_for[0]?.name}
+        </div>
+      </div>
+    </div>
+  );
+};
+
+const CompanyElement = ({ companyObj }) => {
+  return (
+    <div className="flex gap-4 p-2 items-center border-b-1 border-white/25">
+      <img src={useImage(companyObj.logo_path)} className="w-12 rounded-lg" />
+      <div>
+        <h2>{companyObj.name}</h2>
+      </div>
+    </div>
+  );
+};
+
+const SearchPreview = () => {
+  const { inputValue, options, index } = useSearchbarContext();
+  const debouncedInput = useDebounce(inputValue);
+
+  const searchResult = useQuery(
+    () => search(options[index].name, debouncedInput),
+    `search-${options[index].name}-${debouncedInput}-1`,
+  );
+  if (
+    debouncedInput !== "" &&
+    (searchResult?.results === undefined || searchResult.results.length === 0)
+  ) {
+    return (
+      <div className="grid place-items-center h-30 sm:h-50 text-red-500 font-semibold">
+        No results found.
+      </div>
+    );
+  }
+
+  return (
+    <>
+      {searchResult?.results?.slice(0, 8)?.map((result) => {
+        if (!result.media_type) {
+          result.media_type = mediaTypes[options[index].name];
+        }
+        switch (result.media_type) {
+          case "movie":
+            return (
+              <MovieElement movieObj={result} key={`movie-${result.id}`} />
+            );
+          case "tv":
+            return <TvElement tvObj={result} key={`tv-${result.id}`} />;
+          case "person":
+            return (
+              <PersonElement personObj={result} key={`person-${result.id}`} />
+            );
+          case "company":
+            return (
+              <CompanyElement
+                companyObj={result}
+                key={`company-${result.id}`}
+              />
+            );
+        }
+      })}
+    </>
+  );
+};
+
+const SearchSelect = ({ variant }) => {
   const [isOpen, setIsOpen] = useState(false);
+  const { index, setIndex, options } = useSearchbarContext();
 
   return (
     <>
       <div
-        className={`fixed inset-0 bg-[hsl(0,0%,12%)]/50 z-3 ${isOpen ? "block" : "hidden"}`}
-        onClick={() => {
-          setIsOpen(false);
-        }}
-      ></div>
+        className={`fixed inset-0 ${variant === "large" ? "bg-transparent" : "bg-[hsl(0,0%,12%)]/50"} z-30 ${isOpen ? "block" : "hidden"}`}
+        onClick={() => setIsOpen(false)}
+      />
+
       <button
         type="button"
-        onClick={() => {
-          setIsOpen(!isOpen);
-        }}
-        className="flex items-center justify-center gap-1.5 px-3 py-1 text-left whitespace-nowrap"
+        onClick={() => setIsOpen(!isOpen)}
+        className={`flex items-center justify-center gap-1.5 px-3 py-1 text-left whitespace-nowrap
+					${
+            variant === "large"
+              ? "bg-white text-black rounded-l-xs border-r-1 relative"
+              : ""
+          }`}
+        style={variant === "large" ? { anchorName: "--search-btn" } : {}}
       >
         <span className="text-sm font-semibold">{options[index].name}</span>
-        <TriangleIcon className={`size-2.5 ${isOpen && "rotate-180"}`} />
+        <TriangleIcon className={`size-2.5 ${isOpen ? "rotate-180" : ""}`} />
       </button>
+
       <div
-        className={`fixed bg-gray-secondary bottom-0 left-0 right-0 text-white z-10 rounded-t-sm pt-2 pb-5 transition-opacity ${isOpen ? "block opacity-100 starting:opacity-0" : "opacity-0 hidden"}`}
+        className={`bg-gray-secondary text-white z-40 transition-opacity ${
+          variant === "large"
+            ? "absolute w-44 rounded-sm"
+            : "fixed bottom-0 left-0 right-0 rounded-t-sm pt-2 pb-5 "
+        } ${isOpen ? "opacity-100 starting:opacity-0" : "opacity-0 hidden"}`}
+        style={
+          variant === "large"
+            ? {
+                positionAnchor: "--search-btn",
+                top: "calc(anchor(bottom) + 4px)",
+                left: "anchor(left)",
+              }
+            : {}
+        }
       >
         {options.map((option, i) => {
           const isActive = i === index;
           return (
             <button
-              className={`flex hover:bg-gray-hover gap-3 py-3 px-4 group ${isActive ? "text-yellow" : ""} active:bg-gray-light`}
+              type="button"
               key={i}
+              className={`flex hover:bg-gray-hover gap-3 py-3 px-4 group w-full ${
+                isActive ? "text-yellow" : ""
+              }`}
               onClick={() => {
                 setIndex(i);
                 setIsOpen(false);
               }}
-              type="button"
             >
               <option.icon
-                className={`${isActive ? "text-yellow" : "text-gray-light group-hover:text-white"} size-6`}
+                className={`${
+                  isActive
+                    ? "text-yellow"
+                    : "text-gray-light group-hover:text-white"
+                } size-6`}
               />
               <span>{option.name}</span>
             </button>
@@ -56,13 +218,8 @@ const SmallSearchSelect = ({ index, setIndex, options }) => {
   );
 };
 
-const SmallSearchbar = ({
-  index,
-  setIndex,
-  options,
-  handleSubmit,
-  inputRef,
-}) => {
+const SmallSearchbar = () => {
+  const { setInputValue, inputValue, handleSubmit } = useSearchbarContext();
   const [isOpen, setIsOpen] = useState(false);
   return (
     <>
@@ -76,19 +233,19 @@ const SmallSearchbar = ({
       </button>
       <form
         onSubmit={handleSubmit}
-        className={`fixed bg-gray-secondary z-2 w-full text-white transition-all ${isOpen ? "flex top-0 " : "-top-[100%] hidden"} starting:-top-[100%]`}
+        className={`absolute bg-gray-secondary z-2 w-full text-white transition-all ${isOpen ? "flex top-0 " : "-top-[100%] hidden"} starting:-top-[100%]`}
       >
-        <SmallSearchSelect
-          index={index}
-          setIndex={setIndex}
-          options={options}
-        />
+        <SearchSelect variant="small" />
 
         <input
           type="text"
-          ref={inputRef}
+          value={inputValue}
+          onChange={(e) => {
+            setInputValue(e.target.value);
+          }}
           id="input"
-          className="bg-gray-secondary outline-0 p-4 w-full rounded-r-xs"
+          autoComplete="off"
+          className="peer bg-gray-secondary outline-0 p-4 w-full rounded-r-xs"
           placeholder="Search IMDb"
         />
         <button
@@ -100,127 +257,62 @@ const SmallSearchbar = ({
         >
           <CloseIcon className="size-6" />
         </button>
+        <div
+          className={
+            "hidden opacity-0 peer-focus:block peer-focus:opacity-100 peer-focus:starting:opacity-0 transition-opacity transition-discrete absolute bottom-0 top-[100%] h-fit w-full bg-gray-secondary overflow-y-auto rounded-sm"
+          }
+        >
+          <Suspense
+            fallback={<Loading className="h-30 grid place-items-center" />}
+          >
+            <SearchPreview />
+          </Suspense>
+        </div>
       </form>
     </>
   );
 };
 
-const LargeSearchSelect = ({ index, setIndex, options }) => {
-  const [isOpen, setIsOpen] = useState(false);
-  const dropdownRef = useRef();
-
+const LargeSearchbar = () => {
+  const { setInputValue, inputValue, handleSubmit } = useSearchbarContext();
   return (
-    <>
-      <button
-        type="button"
-        onClick={() => {
-          setIsOpen(!isOpen);
-        }}
-        className="flex items-center justify-center gap-1.5 px-3 py-1 bg-white text-black rounded-l-xs border-r-1 relative text-left whitespace-nowrap"
-        style={{ anchorName: "--search-btn" }}
-      >
-        <span className="text-sm font-semibold">{options[index].name}</span>
-        <TriangleIcon className={`size-2.5 ${isOpen && "rotate-180"}`} />
-      </button>
-
-      <div
-        className={`fixed inset-0 bg-transparent z-3 ${isOpen ? "block" : "hidden"}`}
-        onClick={() => {
-          setIsOpen(false);
-        }}
-      ></div>
-      <div
-        className={`absolute bg-gray-secondary text-white w-44 rounded-sm transition-opacity z-4 ${isOpen ? "opacity-100 starting:opacity-0" : "opacity-0 hidden"}`}
-        style={{
-          positionAnchor: "--search-btn",
-          top: "calc(anchor(bottom) + 4px)",
-          left: "anchor(left)",
-        }}
-        ref={dropdownRef}
-      >
-        {options.map((option, i) => {
-          const isActive = i === index;
-          return (
-            <button
-              className={`flex hover:bg-gray-hover active:bg-gray-light gap-3 py-3 px-4 group w-full  ${isActive ? "text-yellow" : ""}`}
-              key={i}
-              onClick={() => {
-                setIndex(i);
-                setIsOpen(false);
-              }}
-            >
-              <option.icon
-                className={`${isActive ? "text-yellow" : "text-gray-light group-hover:text-white"} size-6`}
-              />
-              <span>{option.name}</span>
-            </button>
-          );
-        })}
-      </div>
-    </>
-  );
-};
-
-const LargeSearchbar = ({
-  index,
-  setIndex,
-  options,
-  handleSubmit,
-  inputRef,
-}) => {
-  return (
-    <form onSubmit={handleSubmit} className="w-full max-w-200 flex rounded-xs">
-      <LargeSearchSelect index={index} setIndex={setIndex} options={options} />
+    <form
+      onSubmit={handleSubmit}
+      className="w-full max-w-200 flex rounded-xs relative"
+    >
+      <SearchSelect variant="large" />
 
       <input
         type="text"
-        ref={inputRef}
+        value={inputValue}
+        onChange={(e) => {
+          setInputValue(e.target.value);
+        }}
+        autoComplete="off"
         id="search-input"
-        className="bg-white text-black pl-2 pr-9 py-1 w-full rounded-r-xs"
+        className="peer bg-white text-black pl-2 pr-9 py-1 w-full rounded-r-xs"
       />
       <button className="search-submit">
         <SearchIcon className="size-6 text-black/54" />
       </button>
+      <div
+        className={
+          "hidden opacity-0 peer-focus:block peer-focus:opacity-100 peer-focus:starting:opacity-0 transition-opacity transition-discrete absolute bottom-0 top-[100%] h-fit w-full bg-gray-secondary overflow-y-auto rounded-sm"
+        }
+      >
+        <Suspense
+          fallback={<Loading className="h-50 grid place-items-center" />}
+        >
+          <SearchPreview />
+        </Suspense>
+      </div>
     </form>
   );
 };
 
 const Searchbar = () => {
-  const [index, setIndex] = useState(0);
   const [isSmallScreen, setIsSmallScreen] = useState(window.innerWidth < 640);
-  const inputRef = useRef();
 
-  const options = [
-    {
-      name: "All",
-      icon: SearchIcon,
-    },
-    {
-      name: "Titles",
-      icon: MovieIcon,
-    },
-    {
-      name: "TV episodes",
-      icon: TvIcon,
-    },
-    {
-      name: "Celebs",
-      icon: CelebsIcon,
-    },
-    {
-      name: "Companies",
-      icon: BuildingsIcon,
-    },
-    {
-      name: "Keywords",
-      icon: TagIcon,
-    },
-  ];
-
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    console.log(inputRef.current.value, options[index].name);
-  };
   useEffect(() => {
     const abortController = new AbortController();
     window.addEventListener(
@@ -236,21 +328,14 @@ const Searchbar = () => {
   }, []);
 
   return !isSmallScreen ? (
-    <LargeSearchbar
-      index={index}
-      setIndex={setIndex}
-      options={options}
-      handleSubmit={handleSubmit}
-      inputRef={inputRef}
-    />
+    <>
+      <LargeSearchbar />
+    </>
   ) : (
-    <SmallSearchbar
-      index={index}
-      setIndex={setIndex}
-      options={options}
-      handleSubmit={handleSubmit}
-      inputRef={inputRef}
-    />
+    <>
+      <SmallSearchbar />
+      {/* <SearchPreview className={"fixed inset-0 bg-red-900 flex"} /> */}
+    </>
   );
 };
 

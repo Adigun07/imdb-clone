@@ -100,14 +100,14 @@ const SmallMenuDropdown = ({ smallMenuItem, onToggle, isOpen }) => {
   }, [isOpen]);
 
   return (
-    <div className={`${isOpen && "border-b-1 border-b-gray-light"}`}>
+    <div className={`${isOpen ? "border-b-1 border-b-gray-light" : ""}`}>
       <button
         className={`flex justify-between w-full py-2 px-4 active:bg-blue/40 text-gray-light  ${isOpen ? "text-yellow" : "focus:text-white"}`}
         onClick={onToggle}
       >
         <div className="flex gap-2">
           <smallMenuItem.icon className="size-6 " />
-          <div className={`${!isOpen && "text-white"}`}>
+          <div className={`${!isOpen ? "text-white" : ""}`}>
             {smallMenuItem.title}
           </div>
         </div>
@@ -137,7 +137,7 @@ const SmallMenu = ({ handleClose, isOpen }) => {
         className={`fixed inset-0 bg-[hsl(0,0%,12%)]/50 z-5 ${isOpen ? "block" : "hidden"}`}
         onClick={handleClose}
       ></div>
-      <div className={`small-menu ${isOpen && "open"}`} ref={menuRef}>
+      <div className={`small-menu ${isOpen ? "open" : ""}`} ref={menuRef}>
         <button
           className="size-8 rounded-full cursor-pointer flex items-center justify-center mr-4 ml-auto mb-4"
           onClick={handleClose}
@@ -159,7 +159,7 @@ const SmallMenu = ({ handleClose, isOpen }) => {
 
 const LargeMenu = ({ handleClose, isOpen }) => {
   return (
-    <div className={`large-menu ${isOpen && "open"}`}>
+    <div className={`large-menu ${isOpen ? "open" : ""}`}>
       <div className="grid justify-items-center grid-cols-3 gap-x-20 w-fit mx-auto py-10 ">
         <div className="flex justify-between items-center span-2 col-span-3 mb-10 justify-self-stretch">
           <LogoIcon className="w-25" />

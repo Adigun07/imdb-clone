@@ -2,6 +2,7 @@
 import LogoIcon from "../assets/logo.svg?react";
 import Menu from "./Menu.jsx";
 import Searchbar from "./Searchbar.jsx";
+import { SearchbarProvider } from "../contexts/SearchbarContext.jsx";
 const Navbar = () => {
   return (
     <>
@@ -10,7 +11,9 @@ const Navbar = () => {
         <LogoIcon />
         {/* </Link> */}
         <Menu />
-        <Searchbar />
+        <SearchbarProvider>
+          <Searchbar />
+        </SearchbarProvider>
       </nav>
     </>
   );
